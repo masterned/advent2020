@@ -5,3 +5,8 @@
     * [ ] Tests
     * [x] Part 1
     * [x] Part 2
+* [x] Day 2: Password Philosophy
+    * [ ] Tests
+    * [x] Part 1
+    * [x] Part 2
+

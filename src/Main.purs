@@ -1,7 +1,7 @@
 module Main where
 
 import Prelude
-import Day1.ReportRepair (inputPath, getSolutions)
+import Day2.PasswordPhilosophy (inputPath, getSolutions)
 import Effect (Effect)
 import Effect.Console (log)
 import Node.Encoding (Encoding(..))
