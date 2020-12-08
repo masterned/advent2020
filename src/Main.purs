@@ -1,7 +1,7 @@
 module Main where
 
 import Prelude
-import Day2.PasswordPhilosophy (inputPath, getSolutions)
+import Day3.TobogganTrajectory (inputPath, getSolutions)
 import Effect (Effect)
 import Effect.Console (log)
 import Node.Encoding (Encoding(..))

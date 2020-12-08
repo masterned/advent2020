@@ -9,4 +9,8 @@
     * [ ] Tests
     * [x] Part 1
     * [x] Part 2
+* [x] Day 3: Toboggan Trajectory
+    * [ ] Tests
+    * [x] Part 1
+    * [x] Part 2
 
