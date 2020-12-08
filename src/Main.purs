@@ -1,7 +1,7 @@
 module Main where
 
 import Prelude
-import Day3.TobogganTrajectory (inputPath, getSolutions)
+import Day4.PassportProcessing (inputPath, getSolutions)
 import Effect (Effect)
 import Effect.Console (log)
 import Node.Encoding (Encoding(..))
