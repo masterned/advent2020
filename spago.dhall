@@ -11,10 +11,12 @@ You can edit this file as you like.
   , "int-53"
   , "lists"
   , "node-fs-aff"
+  , "ordered-collections"
   , "partial"
   , "psci-support"
   , "record"
   , "test-unit"
+  , "tuples"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

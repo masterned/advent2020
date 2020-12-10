@@ -2,12 +2,16 @@
 module Day4.PassportProcessing where
 
 import Prelude
-import Data.Array (any, filter, find, length, (!!))
-import Data.Either (either)
+import Data.Array (filter, length, (!!), head)
+import Data.Array.NonEmpty (toArray)
+import Data.Either (Either, either)
+import Data.Foldable (all, any, foldl)
 import Data.Int (fromString)
-import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing)
+import Data.Map (Map, empty, insert, lookup, member)
+import Data.Maybe (fromMaybe, isJust, maybe)
 import Data.String (Pattern(..), split)
-import Data.String.Regex (regex)
+import Data.String as String
+import Data.String.Regex (Regex, match, regex, test)
 import Data.String.Regex as Regex
 import Data.String.Regex.Flags (RegexFlags(..))
 
@@ -17,70 +21,20 @@ type KeyValuePair
     }
 
 type Passport
-  = { birthYear :: Int
-    , issueYear :: Int
-    , expirationYear :: Int
-    , height :: String
-    , hairColor :: String
-    , eyeColor :: String
-    , passportID :: Int
-    , countryID :: Maybe Int
-    }
+  = Map String String
 
-testInput :: String
-testInput = "ecl:gry pid:860033327 eyr:2020 hcl:#fffffd\nbyr:1937 iyr:2017 cid:147 hgt:183cm\n\niyr:2013 ecl:amb cid:350 eyr:2023 pid:028048884\nhcl:#cfa07d byr:1929\n\nhcl:#ae17e1 iyr:2013\neyr:2024\necl:brn pid:760753108 byr:1931\nhgt:179cm\n\nhcl:#cfa07d eyr:2025 pid:166559648\niyr:2011 ecl:brn hgt:59in"
-
-createPassport :: String -> Maybe Passport
-createPassport rawPassportData =
-  if (any isNothing [ birthYear, issueYear, expirationYear, passportID ]) || (any isNothing [ height, hairColor, eyeColor ]) then
-    Nothing
-  else
-    Just
-      { birthYear: fromMaybe (-1) birthYear
-      , issueYear: fromMaybe (-1) issueYear
-      , expirationYear: fromMaybe (-1) expirationYear
-      , height: fromMaybe "" height
-      , hairColor: fromMaybe "" hairColor
-      , eyeColor: fromMaybe "" eyeColor
-      , passportID: fromMaybe (-1) passportID
-      , countryID: countryID
-      }
-  where
-  separatePassportParts :: Array String
-  separatePassportParts = either (pure <<< identity) (flip Regex.split rawPassportData) (regex "\\s" defaultRegexFlags)
-
-  keyValuePairs :: Array KeyValuePair
-  keyValuePairs = createKeyValuePair <$> separatePassportParts
-
-  get :: String -> Maybe String
-  get key = (\kv -> kv.value) <$> (find (\kv -> kv.key == key) keyValuePairs)
-
-  birthYear :: Maybe Int
-  birthYear = fromString =<< get "byr"
-
-  issueYear :: Maybe Int
-  issueYear = fromString =<< get "iyr"
-
-  expirationYear :: Maybe Int
-  expirationYear = fromString =<< get "eyr"
-
-  height :: Maybe String
-  height = get "hgt"
-
-  hairColor :: Maybe String
-  hairColor = get "hcl"
-
-  eyeColor :: Maybe String
-  eyeColor = get "ecl"
-
-  passportID :: Maybe Int
-  passportID = fromString =<< get "pid"
-
-  countryID :: Maybe Int
-  countryID = fromString =<< get "cid"
+type RawPassportData
+  = String
 
 defaultRegexFlags :: RegexFlags
 defaultRegexFlags = RegexFlags { global: true, unicode: true, ignoreCase: false, sticky: false, multiline: true }
+
+testInput :: String
+testInput =
+  "ecl:gry pid:860033327 eyr:2020 hcl:#fffffd\nbyr:1937 iyr:2017 cid:147 hgt:183cm\n\n"
+    <> "iyr:2013 ecl:amb cid:350 eyr:2023 pid:028048884\nhcl:#cfa07d byr:1929\n\n"
+    <> "hcl:#ae17e1 iyr:2013\neyr:2024\necl:brn pid:760753108 byr:1931\nhgt:179cm\n\n"
+    <> "hcl:#cfa07d eyr:2025 pid:166559648\niyr:2011 ecl:brn hgt:59in"
 
 createKeyValuePair :: String -> KeyValuePair
 createKeyValuePair rawKeyValuePair =
@@ -91,29 +45,128 @@ createKeyValuePair rawKeyValuePair =
   keyValueArray :: Array String
   keyValueArray = split (Pattern ":") rawKeyValuePair
 
-inputPath :: String
-inputPath = "./data/Day4/input.txt"
+parseKeyValuePairSet :: String -> Array KeyValuePair
+parseKeyValuePairSet rawData = createKeyValuePair <$> either (pure <<< identity) (flip Regex.split rawData) (regex "\\s+" defaultRegexFlags)
+
+createPassport :: RawPassportData -> Passport
+createPassport rawPassportData =
+  foldl
+    ( \passport { key: key, value: value } ->
+        if any (eq key)
+          [ "byr"
+          , "iyr"
+          , "eyr"
+          , "hgt"
+          , "hcl"
+          , "ecl"
+          , "pid"
+          , "cid"
+          ] then
+          insert key value passport
+        else
+          passport
+    )
+    empty
+    kvSet
+  where
+  kvSet :: Array KeyValuePair
+  kvSet = parseKeyValuePairSet rawPassportData
+
+isComplete :: Passport -> Boolean
+isComplete passport = all (\key -> member key passport) [ "byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid" ]
+
+byrIsValid :: String -> Boolean
+byrIsValid birthYear = String.length birthYear == 4 && (maybe false (\byr -> 1920 <= byr && byr <= 2002) $ fromString birthYear)
+
+iyrIsValid :: String -> Boolean
+iyrIsValid issueYear = String.length issueYear == 4 && (maybe false (\iyr -> 2010 <= iyr && iyr <= 2020) $ fromString issueYear)
+
+eyrIsValid :: String -> Boolean
+eyrIsValid expirationYear = String.length expirationYear == 4 && (maybe false (\eyr -> 2020 <= eyr && eyr <= 2030) $ fromString expirationYear)
+
+hgtIsValid :: String -> Boolean
+hgtIsValid height =
+  if isCm then
+    150 <= internalInt && internalInt <= 193
+  else if isIn then
+    59 <= internalInt && internalInt <= 76
+  else
+    false
+  where
+  testRegex :: String -> Boolean
+  testRegex r = either (\_ -> false) (flip test height) (regex r defaultRegexFlags)
+
+  isCm :: Boolean
+  isCm = testRegex "^\\d{3}cm$"
+
+  isIn :: Boolean
+  isIn = testRegex "^\\d{2}in$"
+
+  defaultInt :: forall a. a -> Int
+  defaultInt _ = (-1)
+
+  internalInt :: Int
+  internalInt =
+    either
+      defaultInt
+      ( \r ->
+          fromMaybe (-1)
+            $ fromString
+            $ fromMaybe ""
+            $ head
+                ( maybe
+                    [ "" ]
+                    (\nea -> fromMaybe "" <$> toArray nea)
+                    $ match r height
+                )
+      )
+      (regex "\\d+" defaultRegexFlags)
+
+hclIsValid :: String -> Boolean
+hclIsValid hairColor = String.length hairColor == 7 && (either (\_ -> false) (flip test hairColor) hairRegex)
+  where
+  hairRegex :: Either String Regex
+  hairRegex = regex "^#[0-9a-f]{6}$" defaultRegexFlags
+
+eclIsValid :: String -> Boolean
+eclIsValid eyeColor = any (eq eyeColor) [ "amb", "blu", "brn", "gry", "grn", "hzl", "oth" ]
+
+pidIsValid :: String -> Boolean
+pidIsValid passportID = String.length passportID == 9 && (isJust $ fromString passportID)
+
+isValid :: Passport -> Boolean
+isValid passport =
+  isComplete passport
+    && (validateWith byrIsValid "byr")
+    && (validateWith iyrIsValid "iyr")
+    && (validateWith eyrIsValid "eyr")
+    && (validateWith hgtIsValid "hgt")
+    && (validateWith hclIsValid "hcl")
+    && (validateWith eclIsValid "ecl")
+    && (validateWith pidIsValid "pid")
+  where
+  validateWith :: (String -> Boolean) -> String -> Boolean
+  validateWith validation key = validation $ fromMaybe "" $ lookup key passport
 
 testSolution :: Int
-testSolution = length $ filter isJust (createPassport <$> testRawPassportData)
+testSolution = length $ filter isComplete (createPassport <$> testRawPassportData)
   where
   testRawPassportData :: Array String
   testRawPassportData = split (Pattern "\n\n") testInput
 
--- NOTE: guessed 203; number too low
--- filtering out too much?
--- NOTE: guessed 263: number too high
--- may have broken my filters?
+inputPath :: String
+inputPath = "./data/Day4/input.txt"
+
 getSolutionPart1 :: Array String -> Int
-getSolutionPart1 input = length $ filter isJust passports
+getSolutionPart1 input = length $ filter isComplete passports
   where
-  passports :: Array (Maybe Passport)
+  passports :: Array Passport
   passports = createPassport <$> input
 
 getSolutionPart2 :: Array String -> Int
-getSolutionPart2 input = (-2)
+getSolutionPart2 input = length $ filter isValid passports
   where
-  passports :: Array (Maybe Passport)
+  passports :: Array Passport
   passports = createPassport <$> input
 
 getSolutions :: String -> String
