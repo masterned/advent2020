@@ -1,7 +1,7 @@
 module Main where
 
 import Prelude
-import Day4.PassportProcessing (inputPath, getSolutions)
+import Day5.BinaryBoarding (inputPath, getSolutions)
 import Effect (Effect)
 import Effect.Console (log)
 import Node.Encoding (Encoding(..))
