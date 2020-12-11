@@ -13,7 +13,19 @@
     * [ ] Tests
     * [x] Part 1
     * [x] Part 2
-* [ ] Day 4: Passport Processing
+* [x] Day 4: Passport Processing
+    * [ ] Tests
+    * [x] Part 1
+    * [x] Part 2
+* [x] Day 5: Binary Boarding
+    * [ ] Tests
+    * [x] Part 1
+    * [x] Part 2
+* [x] Day 6: Custom Customs
+    * [ ] Tests
+    * [x] Part 1
+    * [x] Part 2
+* [ ] Day 7: Handy Haversacks
     * [ ] Tests
     * [ ] Part 1
     * [ ] Part 2
