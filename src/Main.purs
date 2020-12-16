@@ -1,7 +1,7 @@
 module Main where
 
 import Prelude
-import Day6.CustomCustoms (inputPath, getSolutions)
+import Day7.HandyHaversacks (inputPath, getSolutions)
 import Effect (Effect)
 import Effect.Console (log)
 import Node.Encoding (Encoding(..))
