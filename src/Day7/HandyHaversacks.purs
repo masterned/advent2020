@@ -3,11 +3,11 @@ module Day7.HandyHaversacks where
 import Prelude
 import Data.Array.NonEmpty (toArray)
 import Data.Either (Either, either)
-import Data.Foldable (foldl, length)
+import Data.Foldable (foldl)
 import Data.Int (fromString)
-import Data.List (List(..), (:), filter, fromFoldable, head, tail)
-import Data.Map (Map, empty, insert, isEmpty, keys, lookup)
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.List (List(..), (:), filter, fromFoldable)
+import Data.Map (Map, empty, foldSubmap, insert, isEmpty, size)
+import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
 import Data.String (Pattern(..), split, trim)
 import Data.String.Regex (Regex, match, regex)
 import Data.String.Regex as Regex
@@ -25,32 +25,27 @@ testInput =
     <> "faded blue bags contain no other bags.\n"
     <> "dotted black bags contain no other bags.\n"
 
-newtype Bag
-  = Bag
-  { color :: String
-  , count :: Int
-  }
+newtype BagAtlas
+  = BagAtlas (Map String (Map String Int))
 
-instance eqBag :: Eq Bag where
-  eq (Bag { color: colorA }) (Bag { color: colorB }) = colorA == colorB
+derive instance eqBagAtlas :: Eq BagAtlas
 
-derive instance ordBag :: Ord Bag
-
-instance showBag :: Show Bag where
-  show (Bag { color, count }) = show color <> ":" <> show count
-
-createBag :: String -> Int -> Bag
-createBag color count =
-  Bag
-    { color: color
-    , count: count
-    }
-
-getColor :: Bag -> String
-getColor (Bag { color }) = color
-
-getCount :: Bag -> Int
-getCount (Bag { count }) = count
+instance showBagAtlas :: Show BagAtlas where
+  show (BagAtlas atlas) =
+    foldSubmap
+      Nothing
+      Nothing
+      ( \bagColor containerMap ->
+          bagColor
+            <> " | "
+            <> ( if isEmpty containerMap then
+                  "empty"
+                else
+                  foldSubmap Nothing Nothing (\color count -> color <> ":" <> show count <> " ") containerMap
+              )
+            <> "\n"
+      )
+      atlas
 
 separateRuleParts :: String -> List String
 separateRuleParts ruleLine =
@@ -67,61 +62,17 @@ separateRuleParts ruleLine =
   ruleLineRegex :: Either String Regex
   ruleLineRegex = regex " bags contain | bags?[,|.]\\s*" (RegexFlags { global: true, unicode: true, ignoreCase: true, sticky: false, multiline: false })
 
-newtype BagAtlas
-  = BagAtlas (Map String (List Bag))
-
-derive instance eqBagAtlas :: Eq BagAtlas
-
-instance showBagAtlas :: Show BagAtlas where
-  show (BagAtlas atlas) =
-    foldl
-      ( \output key ->
-          output
-            <> show key
-            <> " | "
-            <> ( maybe
-                  "shouldn't be able to see this"
-                  ( \bagList ->
-                      if bagList == Nil then
-                        "empty"
-                      else
-                        foldl (\s b -> s <> show b <> " ") "" bagList
-                  )
-                  (lookup key atlas)
-              )
-            <> "\n"
-      )
-      ""
-      $ keys atlas
-
-listJoin :: List String -> String
-listJoin = trim <<< foldl (\output s -> output <> s <> " ") ""
-
 createBagAtlas :: List String -> BagAtlas
 createBagAtlas Nil = BagAtlas empty
 
-createBagAtlas (topBag : containedBags) =
+createBagAtlas (topBagColor : containedBagsSpecs) =
   BagAtlas
-    ( insert topBag Nil
-        $ if listJoin containedBags == "no other" then
+    ( insert topBagColor empty
+        $ foldl
+            (\atlas { color, count } -> maybe atlas (\cl -> insert cl (insert topBagColor (fromMaybe 0 count) empty) atlas) color)
             empty
-          else
-            foldl
-              ( \atlas bagSpec ->
-                  insert (color bagSpec) (createBag topBag (count bagSpec) : Nil) atlas
-              )
-              empty
-              containedBags
+            (splitBagSpecParts <$> containedBagsSpecs)
     )
-  where
-  getColorAndCount :: String -> List String
-  getColorAndCount bagSpec = fromFoldable $ split (Pattern " ") bagSpec
-
-  color :: String -> String
-  color bagSpec = listJoin $ fromMaybe Nil $ tail $ getColorAndCount bagSpec
-
-  count :: String -> Int
-  count bagSpec = fromMaybe 0 $ fromString =<< (head $ getColorAndCount bagSpec)
 
 parseBagAtlas :: String -> BagAtlas
 parseBagAtlas = separateRuleParts >>> createBagAtlas
@@ -132,22 +83,18 @@ mergeBagAtlases (BagAtlas a) (BagAtlas b)
   | isEmpty b = BagAtlas a
   | otherwise = BagAtlas empty
 
-type ConflictResolver
-  = Bag -> Bag -> Bag
-
-findPaths :: ConflictResolver -> String -> BagAtlas -> List Bag
-findPaths conflictResolver fullAtlas bagInQuestion = Nil
-
 inputPath :: String
 inputPath = "./data/Day7/input.txt"
 
+findPaths :: (Int -> Int -> Int) -> String -> BagAtlas -> Map String Int
+findPaths conflictResolver bagInQuestion (BagAtlas fullAtlas) = empty
+
 getSolutionPart1 :: Array String -> Int
 getSolutionPart1 lines =
-  length
+  size
     $ findPaths const "shiny gold"
     $ foldl mergeBagAtlases (BagAtlas empty)
-    $ parseBagAtlas
-    <$> lines
+    $ (parseBagAtlas <$> lines)
 
 getSolutionPart2 :: Array String -> Int
 getSolutionPart2 lines = -2
@@ -164,20 +111,24 @@ getSolutions input = "Part 1: " <> part1 <> "\nPart 2: " <> part2
   part2 :: String
   part2 = show $ getSolutionPart2 lines
 
--- ^ Experimental
-splitBagSpecParts :: String -> Array (Maybe String)
+splitBagSpecParts :: String -> { color :: Maybe String, count :: Maybe Int }
 splitBagSpecParts bagSpec =
   either
-    (\_ -> [ Just "regex borked" ])
-    (\mNEA -> fromMaybe [ Just "" ] $ toArray <$> mNEA)
-    $ match
-    <$> bagSpecRegex
-    <@> bagSpec
+    (\_ -> { color: Nothing, count: Nothing }) -- in case the regex borks
+    ( \mNEA ->
+        fromMaybe { color: Nothing, count: Nothing }
+          (parseBagSpec <$> toArray <$> mNEA)
+    )
+    (match <$> bagSpecRegex <@> bagSpec)
   where
   bagSpecRegex :: Either String Regex
   bagSpecRegex = regex "^(no other)|(\\d+) (\\w+ \\w+)$" (RegexFlags { global: false, unicode: true, ignoreCase: true, sticky: false, multiline: false })
 
-bagFromSpec :: Array (Maybe String) -> Bag
-bagFromSpec [ _, _, Just countString, Just colorString ] = createBag colorString $ fromMaybe 0 $ fromString countString
+  parseBagSpec :: Array (Maybe String) -> { color :: Maybe String, count :: Maybe Int }
+  parseBagSpec [ string, nothing, count, color ] =
+    if isJust nothing then
+      { color: Nothing, count: Nothing }
+    else
+      { color: color, count: fromString =<< count }
 
-bagFromSpec _ = Bag { color: "", count: 0 }
+  parseBagSpec _ = { color: Nothing, count: Nothing }
