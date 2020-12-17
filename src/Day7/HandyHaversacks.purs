@@ -3,7 +3,7 @@ module Day7.HandyHaversacks where
 import Prelude
 import Data.Array.NonEmpty (toArray)
 import Data.Either (Either, either)
-import Data.Foldable (foldl)
+import Data.Foldable (fold, foldl)
 import Data.Int (fromString)
 import Data.List (List(..), (:), filter, fromFoldable)
 import Data.Map (Map, empty, foldSubmap, insert, isEmpty, keys, lookup, member, size, union, unionWith)
@@ -111,9 +111,6 @@ createInvertedBagAtlas (topBagColor : containedBagsSpecs) =
             (separateBagSpecParts <$> containedBagsSpecs)
     )
 
-mergeBagAtlases :: BagAtlas -> BagAtlas -> BagAtlas
-mergeBagAtlases (BagAtlas a) (BagAtlas b) = BagAtlas (unionWith (union) a b)
-
 inputPath :: String
 inputPath = "./data/Day7/input.txt"
 
@@ -136,8 +133,7 @@ getSolutionPart1 :: Array String -> Int
 getSolutionPart1 lines =
   size
     $ findPaths const "shiny gold"
-    $ foldl mergeBagAtlases (BagAtlas empty)
-    $ (createInvertedBagAtlas <$> separateRuleParts <$> lines)
+    $ fold (createInvertedBagAtlas <$> separateRuleParts <$> lines)
 
 getSolutionPart2 :: Array String -> Int
 getSolutionPart2 lines = -2
