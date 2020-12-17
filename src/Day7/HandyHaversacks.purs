@@ -6,7 +6,7 @@ import Data.Either (Either, either)
 import Data.Foldable (foldl)
 import Data.Int (fromString)
 import Data.List (List(..), (:), filter, fromFoldable)
-import Data.Map (Map, empty, foldSubmap, insert, isEmpty, size)
+import Data.Map (Map, empty, foldSubmap, insert, isEmpty, size, union, unionWith)
 import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
 import Data.String (Pattern(..), split, trim)
 import Data.String.Regex (Regex, match, regex)
@@ -78,10 +78,7 @@ parseBagAtlas :: String -> BagAtlas
 parseBagAtlas = separateRuleParts >>> createBagAtlas
 
 mergeBagAtlases :: BagAtlas -> BagAtlas -> BagAtlas
-mergeBagAtlases (BagAtlas a) (BagAtlas b)
-  | isEmpty a = BagAtlas b
-  | isEmpty b = BagAtlas a
-  | otherwise = BagAtlas empty
+mergeBagAtlases (BagAtlas a) (BagAtlas b) = BagAtlas (unionWith (union) a b)
 
 inputPath :: String
 inputPath = "./data/Day7/input.txt"
