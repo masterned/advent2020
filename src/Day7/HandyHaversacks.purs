@@ -6,8 +6,10 @@ import Data.Either (Either, either)
 import Data.Foldable (fold, foldl)
 import Data.Int (fromString)
 import Data.List (List(..), (:), filter, fromFoldable)
-import Data.Map (Map, empty, foldSubmap, insert, isEmpty, keys, lookup, member, size, union, unionWith)
+import Data.Map (Map, empty, foldSubmap, insert, isEmpty, keys, lookup, union, unionWith)
 import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
+import Data.Set (Set)
+import Data.Set as Set
 import Data.String (Pattern(..), split, trim)
 import Data.String.Regex (Regex, match, regex)
 import Data.String.Regex as Regex
@@ -114,26 +116,29 @@ createInvertedBagAtlas (topBagColor : containedBagsSpecs) =
 inputPath :: String
 inputPath = "./data/Day7/input.txt"
 
-findPaths :: (Int -> Int -> Int) -> String -> BagAtlas -> Map String Int
-findPaths conflictResolver bagInQuestion (BagAtlas fullAtlas)
-  | member bagInQuestion fullAtlas =
-    maybe
-      empty
-      ( \containerBags ->
-          if isEmpty containerBags then
-            empty
-          else
-            foldl (\bagList bagColor -> unionWith conflictResolver bagList $ findPaths conflictResolver bagColor (BagAtlas fullAtlas)) containerBags
-              $ keys containerBags
-      )
-      $ lookup bagInQuestion fullAtlas
-  | otherwise = empty
+topBags :: BagAtlas -> String -> Set String
+topBags (BagAtlas fullAtlas) bagInQuestion
+  | isEmpty fullAtlas = Set.empty
+  | otherwise = topBags' bagInQuestion
+    where
+    topBags' :: String -> Set String
+    topBags' bagToFind =
+      maybe
+        (Set.empty)
+        ( \containerBags ->
+            foldl
+              (\bagSet bagColor -> Set.union bagSet $ topBags' bagColor)
+              (Set.fromFoldable $ keys containerBags)
+              (keys containerBags)
+        )
+        (lookup bagToFind fullAtlas)
 
 getSolutionPart1 :: Array String -> Int
 getSolutionPart1 lines =
-  size
-    $ findPaths const "shiny gold"
-    $ fold (createInvertedBagAtlas <$> separateRuleParts <$> lines)
+  Set.size
+    $ topBags
+        (fold $ createInvertedBagAtlas <$> separateRuleParts <$> lines)
+        "shiny gold"
 
 getSolutionPart2 :: Array String -> Int
 getSolutionPart2 lines = -2
