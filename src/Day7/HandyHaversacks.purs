@@ -28,8 +28,6 @@ testInput =
 newtype BagAtlas
   = BagAtlas (Map String (Map String Int))
 
-derive instance eqBagAtlas :: Eq BagAtlas
-
 instance showBagAtlas :: Show BagAtlas where
   show (BagAtlas atlas) =
     foldSubmap
@@ -47,6 +45,12 @@ instance showBagAtlas :: Show BagAtlas where
       )
       atlas
 
+instance semigroupBagAtlas :: Semigroup BagAtlas where
+  append (BagAtlas a) (BagAtlas b) = BagAtlas (unionWith (union) a b)
+
+instance monoidBagAtlas :: Monoid BagAtlas where
+  mempty = BagAtlas empty
+
 separateRuleParts :: String -> List String
 separateRuleParts ruleLine =
   either
@@ -62,20 +66,50 @@ separateRuleParts ruleLine =
   ruleLineRegex :: Either String Regex
   ruleLineRegex = regex " bags contain | bags?[,|.]\\s*" (RegexFlags { global: true, unicode: true, ignoreCase: true, sticky: false, multiline: false })
 
+bagSpecRegex :: Either String Regex
+bagSpecRegex = regex "^(no other)|(\\d+) (\\w+ \\w+)$" (RegexFlags { global: false, unicode: true, ignoreCase: true, sticky: false, multiline: false })
+
+parseBagSpec :: Array (Maybe String) -> { color :: Maybe String, count :: Maybe Int }
+parseBagSpec [ string, nothing, count, color ] =
+  if isJust nothing then
+    { color: Nothing, count: Nothing }
+  else
+    { color: color, count: fromString =<< count }
+
+parseBagSpec _ = { color: Nothing, count: Nothing }
+
+separateBagSpecParts :: String -> { color :: Maybe String, count :: Maybe Int }
+separateBagSpecParts bagSpec =
+  either
+    (\_ -> { color: Nothing, count: Nothing }) -- in case the regex borks
+    ( \mNEA ->
+        fromMaybe { color: Nothing, count: Nothing }
+          (parseBagSpec <$> toArray <$> mNEA)
+    )
+    (match <$> bagSpecRegex <@> bagSpec)
+
 createBagAtlas :: List String -> BagAtlas
 createBagAtlas Nil = BagAtlas empty
 
 createBagAtlas (topBagColor : containedBagsSpecs) =
   BagAtlas
+    ( insert
+        topBagColor -- key
+        (empty) -- value
+        empty -- BagAtlas
+    )
+
+createInvertedBagAtlas :: List String -> BagAtlas
+createInvertedBagAtlas Nil = BagAtlas empty
+
+createInvertedBagAtlas (topBagColor : containedBagsSpecs) =
+  BagAtlas
     ( insert topBagColor empty
         $ foldl
             (\atlas { color, count } -> maybe atlas (\cl -> insert cl (insert topBagColor (fromMaybe 0 count) empty) atlas) color)
             empty
-            (splitBagSpecParts <$> containedBagsSpecs)
+            (separateBagSpecParts <$> containedBagsSpecs)
     )
-
-parseBagAtlas :: String -> BagAtlas
-parseBagAtlas = separateRuleParts >>> createBagAtlas
 
 mergeBagAtlases :: BagAtlas -> BagAtlas -> BagAtlas
 mergeBagAtlases (BagAtlas a) (BagAtlas b) = BagAtlas (unionWith (union) a b)
@@ -103,7 +137,7 @@ getSolutionPart1 lines =
   size
     $ findPaths const "shiny gold"
     $ foldl mergeBagAtlases (BagAtlas empty)
-    $ (parseBagAtlas <$> lines)
+    $ (createInvertedBagAtlas <$> separateRuleParts <$> lines)
 
 getSolutionPart2 :: Array String -> Int
 getSolutionPart2 lines = -2
@@ -119,25 +153,3 @@ getSolutions input = "Part 1: " <> part1 <> "\nPart 2: " <> part2
 
   part2 :: String
   part2 = show $ getSolutionPart2 lines
-
-splitBagSpecParts :: String -> { color :: Maybe String, count :: Maybe Int }
-splitBagSpecParts bagSpec =
-  either
-    (\_ -> { color: Nothing, count: Nothing }) -- in case the regex borks
-    ( \mNEA ->
-        fromMaybe { color: Nothing, count: Nothing }
-          (parseBagSpec <$> toArray <$> mNEA)
-    )
-    (match <$> bagSpecRegex <@> bagSpec)
-  where
-  bagSpecRegex :: Either String Regex
-  bagSpecRegex = regex "^(no other)|(\\d+) (\\w+ \\w+)$" (RegexFlags { global: false, unicode: true, ignoreCase: true, sticky: false, multiline: false })
-
-  parseBagSpec :: Array (Maybe String) -> { color :: Maybe String, count :: Maybe Int }
-  parseBagSpec [ string, nothing, count, color ] =
-    if isJust nothing then
-      { color: Nothing, count: Nothing }
-    else
-      { color: color, count: fromString =<< count }
-
-  parseBagSpec _ = { color: Nothing, count: Nothing }
