@@ -6,7 +6,7 @@ import Data.Either (Either, either)
 import Data.Foldable (foldl)
 import Data.Int (fromString)
 import Data.List (List(..), (:), filter, fromFoldable)
-import Data.Map (Map, empty, foldSubmap, insert, isEmpty, size, union, unionWith)
+import Data.Map (Map, empty, foldSubmap, insert, isEmpty, keys, lookup, member, size, union, unionWith)
 import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
 import Data.String (Pattern(..), split, trim)
 import Data.String.Regex (Regex, match, regex)
@@ -84,7 +84,19 @@ inputPath :: String
 inputPath = "./data/Day7/input.txt"
 
 findPaths :: (Int -> Int -> Int) -> String -> BagAtlas -> Map String Int
-findPaths conflictResolver bagInQuestion (BagAtlas fullAtlas) = empty
+findPaths conflictResolver bagInQuestion (BagAtlas fullAtlas)
+  | member bagInQuestion fullAtlas =
+    maybe
+      empty
+      ( \containerBags ->
+          if isEmpty containerBags then
+            empty
+          else
+            foldl (\bagList bagColor -> unionWith conflictResolver bagList $ findPaths conflictResolver bagColor (BagAtlas fullAtlas)) containerBags
+              $ keys containerBags
+      )
+      $ lookup bagInQuestion fullAtlas
+  | otherwise = empty
 
 getSolutionPart1 :: Array String -> Int
 getSolutionPart1 lines =
