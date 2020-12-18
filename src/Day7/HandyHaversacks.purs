@@ -3,7 +3,7 @@ module Day7.HandyHaversacks where
 import Prelude
 import Data.Array.NonEmpty (toArray)
 import Data.Either (Either, either)
-import Data.Foldable (fold, foldl, sum)
+import Data.Foldable (fold, foldl)
 import Data.Int (fromString)
 import Data.List (List(..), (:), filter, fromFoldable, zip)
 import Data.Map (Map, empty, foldSubmap, insert, isEmpty, keys, lookup, union, unionWith, values)
@@ -15,18 +15,6 @@ import Data.String.Regex (Regex, match, regex)
 import Data.String.Regex as Regex
 import Data.String.Regex.Flags (RegexFlags(..))
 import Data.Tuple (Tuple(..))
-
-testInput :: String
-testInput =
-  "light red bags contain 1 bright white bag, 2 muted yellow bags.\n"
-    <> "dark orange bags contain 3 bright white bags, 4 muted yellow bags.\n"
-    <> "bright white bags contain 1 shiny gold bag.\n"
-    <> "muted yellow bags contain 2 shiny gold bags, 9 faded blue bags.\n"
-    <> "shiny gold bags contain 1 dark olive bag, 2 vibrant plum bags.\n"
-    <> "dark olive bags contain 3 faded blue bags, 4 dotted black bags.\n"
-    <> "vibrant plum bags contain 5 faded blue bags, 6 dotted black bags.\n"
-    <> "faded blue bags contain no other bags.\n"
-    <> "dotted black bags contain no other bags.\n"
 
 newtype BagAtlas
   = BagAtlas (Map String (Map String Int))
@@ -140,9 +128,6 @@ topBags bagInQuestion (BagAtlas fullAtlas)
 
 entries :: forall k v. Ord k => Map k v -> List (Tuple k v)
 entries dictionary = zip (fromFoldable $ keys dictionary) (values dictionary)
-
-testBagAtlas :: BagAtlas
-testBagAtlas = fold $ (createBagAtlas <<< separateRuleParts) <$> (split (Pattern "\n") $ trim testInput)
 
 containedBagsCount :: String -> BagAtlas -> Int
 containedBagsCount bagInQuestion (BagAtlas fullAtlas) =
