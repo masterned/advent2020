@@ -3,10 +3,10 @@ module Day7.HandyHaversacks where
 import Prelude
 import Data.Array.NonEmpty (toArray)
 import Data.Either (Either, either)
-import Data.Foldable (fold, foldl)
+import Data.Foldable (fold, foldl, sum)
 import Data.Int (fromString)
-import Data.List (List(..), (:), filter, fromFoldable)
-import Data.Map (Map, empty, foldSubmap, insert, isEmpty, keys, lookup, union, unionWith)
+import Data.List (List(..), (:), filter, fromFoldable, zip)
+import Data.Map (Map, empty, foldSubmap, insert, isEmpty, keys, lookup, union, unionWith, values)
 import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
 import Data.Set (Set)
 import Data.Set as Set
@@ -14,6 +14,7 @@ import Data.String (Pattern(..), split, trim)
 import Data.String.Regex (Regex, match, regex)
 import Data.String.Regex as Regex
 import Data.String.Regex.Flags (RegexFlags(..))
+import Data.Tuple (Tuple(..))
 
 testInput :: String
 testInput =
@@ -96,9 +97,13 @@ createBagAtlas Nil = BagAtlas empty
 createBagAtlas (topBagColor : containedBagsSpecs) =
   BagAtlas
     ( insert
-        topBagColor -- key
-        (empty) -- value
-        empty -- BagAtlas
+        topBagColor
+        ( foldl
+            (\bagMap { color, count } -> maybe bagMap (\cl -> insert cl (fromMaybe 0 count) bagMap) color)
+            empty
+            (separateBagSpecParts <$> containedBagsSpecs)
+        )
+        empty
     )
 
 createInvertedBagAtlas :: List String -> BagAtlas
@@ -116,8 +121,8 @@ createInvertedBagAtlas (topBagColor : containedBagsSpecs) =
 inputPath :: String
 inputPath = "./data/Day7/input.txt"
 
-topBags :: BagAtlas -> String -> Set String
-topBags (BagAtlas fullAtlas) bagInQuestion
+topBags :: String -> BagAtlas -> Set String
+topBags bagInQuestion (BagAtlas fullAtlas)
   | isEmpty fullAtlas = Set.empty
   | otherwise = topBags' bagInQuestion
     where
@@ -133,15 +138,41 @@ topBags (BagAtlas fullAtlas) bagInQuestion
         )
         (lookup bagToFind fullAtlas)
 
+entries :: forall k v. Ord k => Map k v -> List (Tuple k v)
+entries dictionary = zip (fromFoldable $ keys dictionary) (values dictionary)
+
+testBagAtlas :: BagAtlas
+testBagAtlas = fold $ (createBagAtlas <<< separateRuleParts) <$> (split (Pattern "\n") $ trim testInput)
+
+containedBagsCount :: String -> BagAtlas -> Int
+containedBagsCount bagInQuestion (BagAtlas fullAtlas) =
+  if isEmpty fullAtlas then
+    (-1)
+  else
+    maybe
+      0
+      ( foldl
+          ( \total (Tuple color count) ->
+              total
+                + count
+                + (count * containedBagsCount color (BagAtlas fullAtlas))
+          )
+          0
+      )
+      (entries <$> lookup bagInQuestion fullAtlas)
+
 getSolutionPart1 :: Array String -> Int
-getSolutionPart1 lines =
-  Set.size
-    $ topBags
-        (fold $ createInvertedBagAtlas <$> separateRuleParts <$> lines)
-        "shiny gold"
+getSolutionPart1 =
+  map (separateRuleParts >>> createInvertedBagAtlas)
+    >>> fold
+    >>> topBags "shiny gold"
+    >>> Set.size
 
 getSolutionPart2 :: Array String -> Int
-getSolutionPart2 lines = -2
+getSolutionPart2 =
+  map (separateRuleParts >>> createBagAtlas)
+    >>> fold
+    >>> containedBagsCount "shiny gold"
 
 getSolutions :: String -> String
 getSolutions input = "Part 1: " <> part1 <> "\nPart 2: " <> part2
