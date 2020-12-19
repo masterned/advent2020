@@ -1,7 +1,7 @@
 module Main where
 
 import Prelude
-import Day7.HandyHaversacks (inputPath, getSolutions)
+import Day8.HandheldHalting (inputPath, getSolutions)
 import Effect (Effect)
 import Effect.Console (log)
 import Node.Encoding (Encoding(..))
