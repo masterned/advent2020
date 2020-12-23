@@ -1,7 +1,7 @@
 module Main where
 
 import Prelude
-import Day8.HandheldHalting (inputPath, getSolutions)
+import Day9.EncodingError (inputPath, getSolutions)
 import Effect (Effect)
 import Effect.Console (log)
 import Node.Encoding (Encoding(..))
