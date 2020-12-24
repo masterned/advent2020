@@ -11,6 +11,7 @@ You can edit this file as you like.
   , "int-53"
   , "lists"
   , "node-fs-aff"
+  , "numbers"
   , "ordered-collections"
   , "partial"
   , "psci-support"
@@ -19,5 +20,5 @@ You can edit this file as you like.
   , "tuples"
   ]
 , packages = ./packages.dhall
-, sources = [ "src/**/*.purs", "test/**/*.purs" ]
+, sources = [ "src/**/*.purs" ]
 }
