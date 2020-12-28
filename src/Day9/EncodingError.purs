@@ -2,72 +2,81 @@ module Day9.EncodingError where
 
 import Prelude
 import Control.MonadZero (guard)
-import Data.Array (drop, head, last, take, (!!), (:))
-import Data.Foldable (foldr, length, sum)
-import Data.Maybe (Maybe, fromMaybe)
+import Data.Array (drop, null, take, (!!))
+import Data.Foldable (length)
+import Data.List (List(..), sort, (:))
+import Data.List as List
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Number (fromString)
 import Data.String (Pattern(..), split, trim)
 
 inputPath :: String
 inputPath = "./data/Day9/input.txt"
 
-containsSumPair :: Number -> Array Number -> Boolean
-containsSumPair nextNumber previousNumbers =
-  1
-    <= ( length
-          $ do
-              a <- previousNumbers
-              b <- previousNumbers
-              guard $ (a /= b) && (a + b == nextNumber)
-              pure [ a, b ]
-      )
+-- FIXME: issue may arrise if duplicate numbers appear in sequence
+-- FIXME: returns all permutations... only combinations are necessary
+--        handle by reference rather than value?
+sumPairs :: forall a. Eq a => Semiring a => a -> Array a -> Array (Array a)
+sumPairs nextNumber previousNumbers = do
+  i <- previousNumbers
+  j <- previousNumbers
+  guard $ (i /= j) && ((i + j) == nextNumber)
+  pure [ i, j ]
 
-findWeakness :: Array Number -> Number
-findWeakness numbers =
-  if not containsSumPair nextNumber section then
-    nextNumber
-  else
-    findWeakness (drop 1 numbers)
+containsSumPair :: forall a. Eq a => Semiring a => a -> Array a -> Boolean
+containsSumPair nextNumber previousNumbers = not null $ sumPairs nextNumber previousNumbers
+
+findWeakness :: forall a. Eq a => Semiring a => Int -> Array a -> Maybe a
+findWeakness _ [] = Nothing
+
+findWeakness window numbers =
+  ( \nextNumber ->
+      if not containsSumPair nextNumber section then
+        Just nextNumber
+      else
+        findWeakness window (drop 1 numbers)
+  )
+    =<< (numbers !! window)
   where
-  section :: Array Number
-  section = take 25 numbers
+  section :: Array a
+  section = take window numbers
 
-  nextNumber :: Number
-  nextNumber = fromMaybe 0.0 $ numbers !! 25
-
-blackJack :: Array Number -> Number -> Array Number
-blackJack [] _ = [ -1.0 ]
-
-blackJack input weakness =
-  if (sum hit) == weakness then
-    hit
-  else
-    blackJack (drop 1 input) weakness
+-- FIXME: breaks on negative numbers...
+blackJackCaterpiller :: forall a. Eq a => Ord a => Ring a => a -> List a -> Maybe (List a)
+blackJackCaterpiller goal inputNumbers = if List.null collectedHand then Nothing else Just collectedHand
   where
-  hit :: Array Number
-  hit =
-    foldr
-      ( \n hand ->
-          if sum hand < weakness then
-            n : hand
-          else
-            hand
-      )
-      []
-      input
+  blackJackCaterpiller' :: a -> List a -> List a -> List a
+  blackJackCaterpiller' _ _ Nil = Nil
 
-sumTopAndBottom :: Array Number -> Maybe Number
-sumTopAndBottom array = ((+) <$> head array <*> last array)
+  blackJackCaterpiller' sumTotal collectedNumbers inputList@(nextInput : restOfInput) =
+    if sumTotal == goal then
+      collectedNumbers
+    else if sumTotal < goal then
+      blackJackCaterpiller' (sumTotal + nextInput) (List.Cons nextInput collectedNumbers) (restOfInput)
+    else -- sumTotal > goal
+      blackJackCaterpiller' (sumTotal - (fromMaybe zero $ List.last collectedNumbers)) (fromMaybe Nil $ List.init collectedNumbers) (inputList)
 
--- 731031916
+  collectedHand :: List a
+  collectedHand = blackJackCaterpiller' zero Nil inputNumbers
+
+sumMinMax :: forall a. Ord a => Semiring a => List a -> Maybe a
+sumMinMax numList
+  | length numList <= 1 = Nothing
+  | otherwise = add <$> List.head sortedList <*> List.last sortedList
+    where
+    sortedList :: List a
+    sortedList = sort numList
+
+-- NOTE: answer: 731031916
 getSolutionPart1 :: Array Number -> String
-getSolutionPart1 numberLines = show $ findWeakness numberLines
+getSolutionPart1 numberLines = show $ findWeakness 25 numberLines
 
+-- NOTE: answer: 93396727
 getSolutionPart2 :: Array Number -> String
-getSolutionPart2 numberLines = show $ blackJack numberLines weakness
+getSolutionPart2 numberLines = show $ sumMinMax =<< (blackJackCaterpiller weakness $ List.fromFoldable numberLines)
   where
   weakness :: Number
-  weakness = findWeakness numberLines
+  weakness = fromMaybe (-1.0) $ findWeakness 25 numberLines
 
 getSolutions :: String -> String
 getSolutions input = "Part 1: " <> getSolutionPart1 numberLines <> "\nPart 2: " <> getSolutionPart2 numberLines
