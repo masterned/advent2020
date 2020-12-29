@@ -1,7 +1,7 @@
 module Main where
 
 import Prelude
-import Day9.EncodingError (inputPath, getSolutions)
+import Day10.AdapterArray (inputPath, getSolutions)
 import Effect (Effect)
 import Effect.Console (log)
 import Node.Encoding (Encoding(..))
