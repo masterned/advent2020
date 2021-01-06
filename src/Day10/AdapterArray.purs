@@ -1,8 +1,9 @@
 module Day10.AdapterArray where
 
 import Prelude
+import Data.Foldable (product)
 import Data.Int (toNumber)
-import Data.List (List(..), drop, filter, foldl, fromFoldable, last, length, snoc, sort, span, union, (:))
+import Data.List (List(..), filter, foldr, fromFoldable, last, length, snoc, sort, (:))
 import Data.Maybe (fromMaybe)
 import Data.Number (fromString)
 import Data.String (Pattern(..), split, trim)
@@ -27,30 +28,31 @@ joltGapList = joltGapList' Nil
 
   joltGapList' acc _ = acc
 
--- FIXME: segregated groups causing missed permutations at bridges
-reachGroups :: List Number -> List (List Number)
-reachGroups = reachGroups' Nil
+-- based off of Haskell code on:
+-- http://vaskir.blogspot.com/2013/09/grouping-consecutive-integers-in-f-and.html
+groupConsecutive :: forall a. Eq a => Ring a => List a -> List (List a)
+groupConsecutive = foldr group Nil
   where
-  reachGroups' :: List (List Number) -> List Number -> List (List Number)
-  reachGroups' acc Nil = acc
+  group :: a -> List (List a) -> List (List a)
+  group x Nil = ((x : Nil) : Nil)
 
-  reachGroups' acc (hd : tl) =
-    (\{ init, rest } -> reachGroups' (union acc ((hd : init) : Nil)) (drop (length init - 1) tl))
-      $ span (\num -> num <= (hd + 3.0)) tl
+  group x acc@((h : t) : rest)
+    | h - x == one = (x : h : t) : rest
+    | otherwise = (x : Nil) : acc
 
--- FIXME: only works on 1-4
-{- TODO: 
- -    substitute with equation
- -    refactor name
- -    make input consecutive range
- -}
-possibleRangesCount :: Int -> Number
-possibleRangesCount listLength = case listLength of
-  1 -> 1.0
-  2 -> 1.0
-  3 -> 2.0
-  4 -> 4.0
-  _ -> 0.0
+  group _ _ = Nil -- this is just to satisfy the type checker, I'm not 100% sure when it would occur
+
+groupPermutations :: List Number -> Number
+groupPermutations straight = groupPermutations' $ length straight
+  where
+  groupPermutations' :: Int -> Number
+  groupPermutations' 0 = 0.0
+
+  groupPermutations' 1 = 1.0
+
+  groupPermutations' 2 = 1.0
+
+  groupPermutations' n = groupPermutations' (n - 3) + groupPermutations' (n - 2) + groupPermutations' (n - 1)
 
 -- NOTE: answer == 3000
 getSolutionPart1 :: List Number -> Number
@@ -62,13 +64,9 @@ getSolutionPart1 numList = (gapCount 1.0) * (gapCount 3.0)
   gapCount :: Number -> Number
   gapCount = eq >>> flip filter joltGaps >>> length >>> toNumber
 
-{- NOTE: 
- -    answer > 20624432955392 && 2199023255552
- -    using the other test case, I'm projecting I'm way off
- -    (2-3 orders of magnitude)
- -}
+-- NOTE: answer == 193434623148032
 getSolutionPart2 :: List Number -> String
-getSolutionPart2 = adapterBag >>> reachGroups >>> foldl (\product group -> product * (possibleRangesCount $ length group)) 1.0 >>> show
+getSolutionPart2 = adapterBag >>> groupConsecutive >>> map groupPermutations >>> product >>> show
 
 getSolutions :: String -> String
 getSolutions input = "Part 1: " <> show (getSolutionPart1 numList) <> "\nPart 2: " <> getSolutionPart2 numList
@@ -77,16 +75,10 @@ getSolutions input = "Part 1: " <> show (getSolutionPart1 numList) <> "\nPart 2:
   numList = numberList input
 
 -- ^: Sandbox
-testInput :: String
-testInput = "16\n10\n15\n5\n1\n11\n7\n19\n6\n12\n4\n"
-
-testList :: List Number
-testList = numberList testInput
-
 -- Part 2 answer == 8
-testBag :: List Number
-testBag = adapterBag testList
+testList :: List Number
+testList = numberList "16\n10\n15\n5\n1\n11\n7\n19\n6\n12\n4\n"
 
 -- Part 2 answer == 19208
-testBag2 :: List Number
-testBag2 = adapterBag $ numberList "28\n33\n18\n42\n31\n14\n46\n20\n48\n47\n24\n23\n49\n45\n19\n38\n39\n11\n1\n32\n25\n35\n8\n17\n7\n9\n4\n2\n34\n10\n3"
+testList2 :: List Number
+testList2 = numberList "28\n33\n18\n42\n31\n14\n46\n20\n48\n47\n24\n23\n49\n45\n19\n38\n39\n11\n1\n32\n25\n35\n8\n17\n7\n9\n4\n2\n34\n10\n3"
