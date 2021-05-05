@@ -5,14 +5,14 @@ import Prelude
 import Control.MonadZero (guard)
 import Data.Array (head)
 import Data.Foldable (product)
-import Data.Int (fromString)
-import Data.Maybe (Maybe, fromMaybe)
-import Data.String (Pattern(..), split)
+import Data.Input (inputNumber, toIntArray)
+import Data.Maybe (Maybe, maybe)
+import Data.Solution (Solution, getSolutions)
 
 inputPath :: String
-inputPath = "./data/Day1/input.txt"
+inputPath = inputNumber 1
 
-findLuckyPair :: Int -> Array Int -> Maybe (Array Int)
+findLuckyPair :: forall a. Eq a => Semiring a => a -> Array a -> Maybe (Array a)
 findLuckyPair goalSum ns =
   head
     $ do
@@ -21,7 +21,7 @@ findLuckyPair goalSum ns =
         guard $ i + j == goalSum
         pure [ i, j ]
 
-findLuckyTrio :: Int -> Array Int -> Maybe (Array Int)
+findLuckyTrio :: forall a. Eq a => Semiring a => a -> Array a -> Maybe (Array a)
 findLuckyTrio goalSum ns =
   head
     $ do
@@ -31,20 +31,13 @@ findLuckyTrio goalSum ns =
         guard $ i + j + k == goalSum
         pure [ i, j, k ]
 
-getSolutionPart1 :: Array Int -> Int
-getSolutionPart1 input = product $ fromMaybe [ 0, 0 ] $ findLuckyPair 2020 input
+-- NOTE: answer = 471019
+part1 :: Array Int -> Int
+part1 = findLuckyPair 2020 >>> map product >>> maybe (-1) identity
 
-getSolutionPart2 :: Array Int -> Int
-getSolutionPart2 input = product $ fromMaybe [ 0, 0, 0 ] $ findLuckyTrio 2020 input
+-- NOTE: answer = 103927824
+part2 :: Array Int -> Int
+part2 = findLuckyTrio 2020 >>> map product >>> maybe (-2) identity
 
-getSolutions :: String -> String
-getSolutions input = "Part 1: " <> show part1 <> "\nPart 2: " <> show part2
-  where
-  legerData :: Array Int
-  legerData = (fromMaybe 0 <<< fromString) <$> split (Pattern "\n") input
-
-  part1 :: Int
-  part1 = getSolutionPart1 legerData
-
-  part2 :: Int
-  part2 = getSolutionPart2 legerData
+answer :: String -> Solution Int
+answer = toIntArray >>> getSolutions part1 part2
