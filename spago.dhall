@@ -8,7 +8,6 @@ You can edit this file as you like.
   , "console"
   , "control"
   , "effect"
-  , "int-53"
   , "lists"
   , "node-fs-aff"
   , "numbers"
