@@ -1,9 +1,9 @@
 module Main where
 
 import Prelude
-import Day10.AdapterArray (inputPath, getSolutions)
+import Day1.ReportRepair (answer, inputPath)
 import Effect (Effect)
-import Effect.Console (log)
+import Effect.Console (logShow)
 import Node.Encoding (Encoding(..))
 import Node.FS.Sync (readTextFile)
 
@@ -11,4 +11,4 @@ import Node.FS.Sync (readTextFile)
 main :: Effect Unit
 main = do
   file <- readTextFile UTF8 inputPath
-  log $ getSolutions file
+  logShow $ answer file
