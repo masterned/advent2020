@@ -1,12 +1,12 @@
 module Day8.Data.Program where
 
 import Prelude
-import Data.Array (elem, modifyAt, (!!))
+import Data.Array (modifyAt, (!!))
 import Data.Either (Either(..))
-import Data.Foldable (foldl, length)
-import Data.List (List(..), (:))
+import Data.Foldable (foldMap, length)
+import Data.Input (separateLines)
+import Data.List (List(..), (:), elem)
 import Data.Maybe (fromMaybe)
-import Data.String (Pattern(..), split, trim)
 import Day8.Data.Instruction (Instruction(..), empty)
 import Day8.Data.Instruction as Instruction
 import Day8.Data.Operation (Operation(..))
@@ -15,16 +15,13 @@ newtype Program
   = Program (Array Instruction)
 
 instance showProgram :: Show Program where
-  show (Program program) = foldl (\string instruction -> string <> show instruction <> "\n") "" program
+  show :: Program -> String
+  show (Program program) = foldMap (\instruction -> show instruction <> "\n") program
 
 derive instance eqProgram :: Eq Program
 
 parse :: String -> Program
-parse rawProgram =
-  Program
-    ( Instruction.parse >>> fromMaybe empty
-        <$> (split (Pattern "\n") $ trim rawProgram)
-    )
+parse = separateLines >>> map (Instruction.parse >>> fromMaybe empty) >>> Program
 
 run :: Program -> Either Int Int
 run = run' 0 0 Nil
@@ -52,19 +49,19 @@ run = run' 0 0 Nil
     execute :: Int -> Int -> Either Int Int
     execute nextAccumulator nextLineNumber = run' nextAccumulator nextLineNumber (instructionLine : visitedLineNumbers) (Program instructions)
 
-possibleBreakList :: Program -> List Int
-possibleBreakList (Program program) = possibleBreakList' Nil 0 Nil (Program program)
+collectListOfPossibleBreaks :: Program -> List Int
+collectListOfPossibleBreaks (Program program) = collectListOfPossibleBreaks' Nil 0 Nil (Program program)
   where
-  possibleBreakList' :: List Int -> Int -> List Int -> Program -> List Int
-  possibleBreakList' possibleBreaks lineNum visited (Program p) =
+  collectListOfPossibleBreaks' :: List Int -> Int -> List Int -> Program -> List Int
+  collectListOfPossibleBreaks' possibleBreaks lineNum visited (Program p) =
     if lineNum < 0 || lineNum > length p || elem lineNum visited then
       possibleBreaks
     else if lineNum == length p then
       Nil
     else case operation of
-      Jump -> possibleBreakList' (lineNum : possibleBreaks) (lineNum + argument) (lineNum : visited) (Program p)
-      NoOp -> possibleBreakList' (lineNum : possibleBreaks) (lineNum + 1) (lineNum : visited) (Program p)
-      Accumulate -> possibleBreakList' (possibleBreaks) (lineNum + 1) (lineNum : visited) (Program p)
+      Jump -> collectListOfPossibleBreaks' (lineNum : possibleBreaks) (lineNum + argument) (lineNum : visited) (Program p)
+      NoOp -> collectListOfPossibleBreaks' (lineNum : possibleBreaks) (lineNum + 1) (lineNum : visited) (Program p)
+      Accumulate -> collectListOfPossibleBreaks' (possibleBreaks) (lineNum + 1) (lineNum : visited) (Program p)
     where
     instruction :: Instruction
     instruction = fromMaybe empty $ p !! lineNum

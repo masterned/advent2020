@@ -6,7 +6,7 @@ import Data.Either (Either, either)
 import Data.Int (fromString)
 import Data.Maybe (Maybe(..))
 import Data.String.Regex (Regex, regex, split)
-import Data.String.Regex.Flags (RegexFlags(..))
+import Data.String.Regex.Flags (unicode)
 import Day8.Data.Operation (Operation(..), parseOperation)
 
 newtype Instruction
@@ -42,7 +42,7 @@ parse rawInstruction =
     (split <$> instructionRegex <@> rawInstruction)
   where
   instructionRegex :: Either String Regex
-  instructionRegex = regex " \\+?" (RegexFlags { global: false, sticky: false, ignoreCase: false, multiline: false, unicode: true })
+  instructionRegex = regex " \\+?" unicode
 
 empty :: Instruction
 empty = (Instruction { operation: NoOp, argument: 0 })

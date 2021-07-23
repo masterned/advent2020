@@ -6,6 +6,7 @@ import Data.Array (filter, length, (!!), head)
 import Data.Array.NonEmpty (toArray)
 import Data.Either (Either, either)
 import Data.Foldable (all, any, foldl)
+import Data.Input (separateParagraphs)
 import Data.Int (fromString)
 import Data.Map (Map, empty, insert, lookup, member)
 import Data.Maybe (fromMaybe, isJust, maybe)
@@ -13,7 +14,7 @@ import Data.String (Pattern(..), split)
 import Data.String as String
 import Data.String.Regex (Regex, match, regex, test)
 import Data.String.Regex as Regex
-import Data.String.Regex.Flags (RegexFlags(..))
+import Data.String.Regex.Flags (RegexFlags, global, multiline, unicode)
 
 type KeyValuePair
   = { key :: String
@@ -27,14 +28,7 @@ type RawPassportData
   = String
 
 defaultRegexFlags :: RegexFlags
-defaultRegexFlags = RegexFlags { global: true, unicode: true, ignoreCase: false, sticky: false, multiline: true }
-
-testInput :: String
-testInput =
-  "ecl:gry pid:860033327 eyr:2020 hcl:#fffffd\nbyr:1937 iyr:2017 cid:147 hgt:183cm\n\n"
-    <> "iyr:2013 ecl:amb cid:350 eyr:2023 pid:028048884\nhcl:#cfa07d byr:1929\n\n"
-    <> "hcl:#ae17e1 iyr:2013\neyr:2024\necl:brn pid:760753108 byr:1931\nhgt:179cm\n\n"
-    <> "hcl:#cfa07d eyr:2025 pid:166559648\niyr:2011 ecl:brn hgt:59in"
+defaultRegexFlags = global <> unicode <> multiline
 
 createKeyValuePair :: String -> KeyValuePair
 createKeyValuePair rawKeyValuePair =
@@ -102,13 +96,10 @@ hgtIsValid height =
   isIn :: Boolean
   isIn = testRegex "^\\d{2}in$"
 
-  defaultInt :: forall a. a -> Int
-  defaultInt _ = (-1)
-
   internalInt :: Int
   internalInt =
     either
-      defaultInt
+      (const (-1))
       ( \r ->
           fromMaybe (-1)
             $ fromString
@@ -146,7 +137,7 @@ isValid passport =
     && (validateWith pidIsValid "pid")
   where
   validateWith :: (String -> Boolean) -> String -> Boolean
-  validateWith validation key = validation $ fromMaybe "" $ lookup key passport
+  validateWith validation key = maybe false validation $ lookup key passport
 
 testSolution :: Int
 testSolution = length $ filter isComplete (createPassport <$> testRawPassportData)
@@ -157,12 +148,14 @@ testSolution = length $ filter isComplete (createPassport <$> testRawPassportDat
 inputPath :: String
 inputPath = "./data/Day4/input.txt"
 
+-- NOTE: answer 245
 getSolutionPart1 :: Array String -> Int
 getSolutionPart1 input = length $ filter isComplete passports
   where
   passports :: Array Passport
   passports = createPassport <$> input
 
+-- NOTE: answer 133
 getSolutionPart2 :: Array String -> Int
 getSolutionPart2 input = length $ filter isValid passports
   where
@@ -173,10 +166,18 @@ getSolutions :: String -> String
 getSolutions input = "Test: " <> show testSolution <> "\nPart 1: " <> show part1 <> "\nPart 2: " <> show part2
   where
   rawPassportData :: Array String
-  rawPassportData = split (Pattern "\n\n") input
+  rawPassportData = separateParagraphs input
 
   part1 :: Int
   part1 = getSolutionPart1 rawPassportData
 
   part2 :: Int
   part2 = getSolutionPart2 rawPassportData
+
+-- ^ Sandbox
+testInput :: String
+testInput =
+  "ecl:gry pid:860033327 eyr:2020 hcl:#fffffd\nbyr:1937 iyr:2017 cid:147 hgt:183cm\n\n"
+    <> "iyr:2013 ecl:amb cid:350 eyr:2023 pid:028048884\nhcl:#cfa07d byr:1929\n\n"
+    <> "hcl:#ae17e1 iyr:2013\neyr:2024\necl:brn pid:760753108 byr:1931\nhgt:179cm\n\n"
+    <> "hcl:#cfa07d eyr:2025 pid:166559648\niyr:2011 ecl:brn hgt:59in"
