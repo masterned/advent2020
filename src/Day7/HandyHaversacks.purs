@@ -4,43 +4,18 @@ import Prelude
 import Data.Array.NonEmpty (toArray)
 import Data.Either (Either, either)
 import Data.Foldable (fold, foldl)
+import Data.Input (inputNumber, separateLines)
 import Data.Int (fromString)
 import Data.List (List(..), (:), filter, fromFoldable, zip)
-import Data.Map (Map, empty, foldSubmap, insert, isEmpty, keys, lookup, union, unionWith, values)
+import Data.Map (Map, empty, insert, isEmpty, keys, lookup, values)
 import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
 import Data.Set (Set)
 import Data.Set as Set
-import Data.String (Pattern(..), split, trim)
 import Data.String.Regex (Regex, match, regex)
 import Data.String.Regex as Regex
-import Data.String.Regex.Flags (RegexFlags(..))
+import Data.String.Regex.Flags (RegexFlags, global, unicode, ignoreCase)
 import Data.Tuple (Tuple(..))
-
-newtype BagAtlas
-  = BagAtlas (Map String (Map String Int))
-
-instance showBagAtlas :: Show BagAtlas where
-  show (BagAtlas atlas) =
-    foldSubmap
-      Nothing
-      Nothing
-      ( \bagColor containerMap ->
-          bagColor
-            <> " | "
-            <> ( if isEmpty containerMap then
-                  "empty"
-                else
-                  foldSubmap Nothing Nothing (\color count -> color <> ":" <> show count <> " ") containerMap
-              )
-            <> "\n"
-      )
-      atlas
-
-instance semigroupBagAtlas :: Semigroup BagAtlas where
-  append (BagAtlas a) (BagAtlas b) = BagAtlas (unionWith (union) a b)
-
-instance monoidBagAtlas :: Monoid BagAtlas where
-  mempty = BagAtlas empty
+import Day7.Data.BagAtlas (BagAtlas(..))
 
 separateRuleParts :: String -> List String
 separateRuleParts ruleLine =
@@ -55,13 +30,13 @@ separateRuleParts ruleLine =
       )
   where
   ruleLineRegex :: Either String Regex
-  ruleLineRegex = regex " bags contain | bags?[,|.]\\s*" (RegexFlags { global: true, unicode: true, ignoreCase: true, sticky: false, multiline: false })
+  ruleLineRegex = regex " bags contain | bags?[,|.]\\s*" (global <> unicode <> ignoreCase)
 
 bagSpecRegex :: Either String Regex
-bagSpecRegex = regex "^(no other)|(\\d+) (\\w+ \\w+)$" (RegexFlags { global: false, unicode: true, ignoreCase: true, sticky: false, multiline: false })
+bagSpecRegex = regex "^(no other)|(\\d+) (\\w+ \\w+)$" (unicode <> ignoreCase)
 
 parseBagSpec :: Array (Maybe String) -> { color :: Maybe String, count :: Maybe Int }
-parseBagSpec [ string, nothing, count, color ] =
+parseBagSpec [ _, nothing, count, color ] =
   if isJust nothing then
     { color: Nothing, count: Nothing }
   else
@@ -107,7 +82,7 @@ createInvertedBagAtlas (topBagColor : containedBagsSpecs) =
     )
 
 inputPath :: String
-inputPath = "./data/Day7/input.txt"
+inputPath = inputNumber 7
 
 topBags :: String -> BagAtlas -> Set String
 topBags bagInQuestion (BagAtlas fullAtlas)
@@ -146,27 +121,27 @@ containedBagsCount bagInQuestion (BagAtlas fullAtlas) =
       )
       (entries <$> lookup bagInQuestion fullAtlas)
 
-getSolutionPart1 :: Array String -> Int
-getSolutionPart1 =
+-- NOTE: answer: 121
+part1 :: Array String -> String
+part1 =
   map (separateRuleParts >>> createInvertedBagAtlas)
     >>> fold
     >>> topBags "shiny gold"
     >>> Set.size
+    >>> show
 
-getSolutionPart2 :: Array String -> Int
-getSolutionPart2 =
+-- NOTE: answer 3805
+part2 :: Array String -> String
+part2 =
   map (separateRuleParts >>> createBagAtlas)
     >>> fold
     >>> containedBagsCount "shiny gold"
+    >>> show
 
 getSolutions :: String -> String
-getSolutions input = "Part 1: " <> part1 <> "\nPart 2: " <> part2
+getSolutions input = "Part 1: " <> part1 lines <> "\nPart 2: " <> part2 lines
   where
   lines :: Array String
-  lines = split (Pattern "\n") $ trim input
+  lines = separateLines input
 
-  part1 :: String
-  part1 = show $ getSolutionPart1 lines
-
-  part2 :: String
-  part2 = show $ getSolutionPart2 lines
+-- ^ Sandbox

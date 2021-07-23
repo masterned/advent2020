@@ -4,11 +4,12 @@ import Prelude
 import Data.Array (filter, head, sort)
 import Data.Either (Either(..), either)
 import Data.Foldable (foldl)
+import Data.Input (inputNumber, separateLines)
 import Data.Maybe (fromMaybe)
-import Data.String (CodePoint, Pattern(..), codePointFromChar, split, toCodePointArray, take, drop)
+import Data.String (CodePoint, codePointFromChar, toCodePointArray, take, drop)
 
 inputPath :: String
-inputPath = "./data/Day5/input.txt"
+inputPath = inputNumber 5
 
 type Bounds
   = { lower :: Int
@@ -86,14 +87,16 @@ findSeat line = row * 8 + col
   col :: Int
   col = findCol colCode
 
-getSolutionPart1 :: Array String -> Int
-getSolutionPart1 = foldl (\greatest cur -> max greatest $ findSeat cur) (-1)
+-- NOTE: answer 989
+getSolutionPart1 :: Array String -> String
+getSolutionPart1 = foldl (\greatest cur -> max greatest $ findSeat cur) (-1) >>> show
 
-getSolutionPart2 :: Array String -> Int
+-- NOTE: answer 548
+getSolutionPart2 :: Array String -> String
 getSolutionPart2 lines =
   either
-    (identity)
-    (\_ -> -1)
+    (show)
+    (\_ -> "-2")
     $ foldl
         ( \prev cur ->
             ( \val ->
@@ -111,13 +114,7 @@ getSolutionPart2 lines =
   sortedSeats = sort $ findSeat <$> (filter (\l -> l /= "") lines)
 
 getSolutions :: String -> String
-getSolutions input = "Part 1: " <> part1 <> "\nPart 2: " <> part2
+getSolutions input = "Part 1: " <> getSolutionPart1 inputLines <> "\nPart 2: " <> getSolutionPart2 inputLines
   where
-  separateLines :: Array String
-  separateLines = split (Pattern "\n") input
-
-  part1 :: String
-  part1 = show $ getSolutionPart1 separateLines
-
-  part2 :: String
-  part2 = show $ getSolutionPart2 separateLines
+  inputLines :: Array String
+  inputLines = separateLines input

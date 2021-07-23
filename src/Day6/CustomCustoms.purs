@@ -2,44 +2,38 @@ module Day6.CustomCustoms where
 
 import Prelude
 import Data.Foldable (foldl, sum)
+import Data.Input (inputNumber, separateLines, separateParagraphs)
 import Data.Set (Set, empty, insert, intersection, size, union)
-import Data.String (CodePoint, Pattern(..), split, toCodePointArray, trim)
+import Data.String (CodePoint, toCodePointArray)
 
 inputPath :: String
-inputPath = "./data/Day6/input.txt"
+inputPath = inputNumber 6
 
-personYeses :: String -> Set CodePoint
-personYeses = toCodePointArray >>> (foldl (flip insert) empty)
+personYeses :: String -> Array (Set CodePoint)
+personYeses = separateLines >>> map (toCodePointArray >>> (foldl (flip insert) empty))
 
-groupYeses :: String -> Set CodePoint
-groupYeses groupString = foldl union empty persons
+groupYeses :: Array (Set CodePoint) -> Set CodePoint
+groupYeses = foldl union empty
+
+unanimousYeses :: Array (Set CodePoint) -> Set CodePoint
+unanimousYeses = foldl intersection allChecks
   where
-  persons :: Array (Set CodePoint)
-  persons = personYeses <$> split (Pattern "\n") groupString
+  allChecks :: Set CodePoint
+  allChecks = foldl (flip insert) empty $ toCodePointArray "abcdefghijklmnopqrstuvwxyz"
 
-allChecks :: Set CodePoint
-allChecks = foldl (flip insert) empty $ toCodePointArray "abcdefghijklmnopqrstuvwxyz"
+countYeses :: (Array (Set CodePoint) -> Set CodePoint) -> Array String -> Int
+countYeses countingFn = map (personYeses >>> countingFn >>> size) >>> sum
 
-unanimousYeses :: String -> Set CodePoint
-unanimousYeses groupString = foldl intersection allChecks persons
-  where
-  persons :: Array (Set CodePoint)
-  persons = personYeses <$> split (Pattern "\n") groupString
+-- NOTE: answer 6703
+part1 :: Array String -> String
+part1 = countYeses groupYeses >>> show >>> append "Part 1: "
 
-getSolutionPart1 :: Array String -> Int
-getSolutionPart1 customsGroups = sum $ (size <<< groupYeses) <$> customsGroups
-
-getSolutionPart2 :: Array String -> Int
-getSolutionPart2 customsGroups = sum $ (size <<< unanimousYeses) <$> customsGroups
+-- NOTE: answer 3430
+part2 :: Array String -> String
+part2 = countYeses unanimousYeses >>> show >>> append "Part 2: "
 
 getSolutions :: String -> String
-getSolutions input = "Part 1: " <> part1 <> "\nPart 2: " <> part2
+getSolutions input = part1 customsGroups <> "\n" <> part2 customsGroups
   where
   customsGroups :: Array String
-  customsGroups = split (Pattern "\n\n") $ trim input
-
-  part1 :: String
-  part1 = show $ getSolutionPart1 customsGroups
-
-  part2 :: String
-  part2 = show $ getSolutionPart2 customsGroups
+  customsGroups = separateParagraphs input
